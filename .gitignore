@@ -26,3 +26,7 @@ presets/
 # 本地打包产物
 release/
 *.zip
+
+# 宣传素材：脚本/文案入库，生成的图片与视频不入库（体积大且可再生）
+docs/promo/*.png
+docs/promo/*.mp4
