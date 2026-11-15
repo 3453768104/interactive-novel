@@ -1,0 +1,30 @@
+# 全局开关。检索默认关闭，攒够设定后在界面里手动启用（第 2 期能力）。
+retrieval_enabled: false
+lore_chunk_threshold: 30
+lore_char_threshold: 10000
+editor_external_hint: "改完保存，应用会自动同步"
+
+# 可选：几行常量世界背景，检索关闭期随模板注入（设定正文仍以 lore/*.md 为准）
+fixed_background: ""
+
+# 事件背景 + 勾选注入的时间线 + 主角人设：只警告不裁剪，避免悄悄丢设定
+event_background_soft_cap: 2000
+persona_soft_cap: 800
+
+# 开场情境只在开头若干回合注入，之后让位给正文（主角人设始终 100% 注入）
+opening_scene_turns: 3
+
+# 哪些角色进长期上下文：favorites_and_notable | favorites_only | none
+character_inject: favorites_and_notable
+
+# 可选：api/local 在正文之外再跑一次便宜的分析调用（默认关，速度优先）
+analysis_second_pass: false
+
+# 全知视角切换视角时显示「◇ 与此同时」细分隔线
+show_scene_markers: true
+
+# 「AI 何时停下让我行动」：勾选触发条件，模型据此返回 STOP 决定
+# dialogue=对话开始前 / major_decision=重大抉择 / new_character=新角色登场
+# scene_change=场景转换 / word_limit=达到字数 / every_n_turns=连写 N 段必停
+stop_triggers: [dialogue, major_decision, new_character, scene_change, word_limit]
+max_consecutive_turns: 3

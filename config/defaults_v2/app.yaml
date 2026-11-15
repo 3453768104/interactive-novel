@@ -1,0 +1,9 @@
+# 全局开关。检索默认关闭，攒够设定后在界面里手动启用（第 2 期能力）。
+retrieval_enabled: false
+lore_chunk_threshold: 30
+lore_char_threshold: 10000
+editor_external_hint: "改完保存，应用会自动同步"
+# 可选：几行常量世界背景，检索关闭期随模板注入（设定正文仍以 lore/*.md 为准）
+fixed_background: ""
+# 事件背景 + 勾选注入的时间线：只警告不裁剪，避免悄悄丢设定
+event_background_soft_cap: 2000

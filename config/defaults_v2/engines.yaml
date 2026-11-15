@@ -1,0 +1,31 @@
+# 三种调用模式。api 与 local 走同一个 OpenAI-compatible 客户端，只是配置不同。
+# 改完保存即可生效（应用会重新读取）。
+engines:
+  api:
+    base_url: https://api.deepseek.com/v1
+    api_key: ""            # 填入你自己的 key；只存在本机这个文件里
+    model: deepseek-chat
+    params:
+      temperature: 0.8
+      max_tokens: 2000
+      top_p: 0.9
+    timeout_ms: 120000
+    retries: 2
+  local:
+    base_url: http://127.0.0.1:1234/v1   # LM Studio 默认；Ollama 改 :11434/v1
+    model: qwen2.5-9b-instruct-q4_k_m    # 仅示例，可换成任意已加载模型
+    context_window: 10000
+    params:
+      temperature: 0.8
+      max_tokens: 1200
+    timeout_ms: 300000                    # 约 30 tokens/s，超时要给足
+    retries: 1
+  paste:
+    target_hint: ChatGPT 网页版            # 纯提示文案
+
+# 仅在「启用设定检索」后才会用到，MVP 阶段不会调用。
+embedding:
+  provider: local
+  base_url: http://127.0.0.1:1234/v1
+  model: nomic-embed-text-v1.5.Q4_K_M     # LM Studio 自带，零额外下载
+  fallback: bm25_only

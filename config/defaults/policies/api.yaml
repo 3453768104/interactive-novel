@@ -1,0 +1,28 @@
+# 联网 API 模式。额度宽裕，设定卡与检索都可以多给。
+mode: api
+estimator:
+  zh_ratio: 1.0
+  ascii_ratio: 0.28
+  other_ratio: 0.5
+  safety_margin: 1.15
+context_window: 64000
+max_output_tokens: 2000
+modules:
+  system_contract: { on: true,  budget: 1200, trim: 0 }
+  protagonist:     { on: true,  budget: 1000, trim: 0 }
+  opening_scene:   { on: true,  budget: 400,  trim: 1 }
+  state_card:      { on: true,  budget: 1500, trim: 3 }
+  rolling_summary: { on: true,  budget: 1500, trim: 4 }
+  characters:      { on: true,  budget: 1200, trim: 5 }
+  lore_pins:       { on: true,  budget: 2000, trim: 8 }
+  lore_index:      { on: true,  budget: 2500,  trim: 9 }
+  lore_chunks:     { on: true,  budget: 4000, top_n: 6, trim: 6 }
+  recent_passages: { on: true,  budget: 5000, n: 9,    trim: 7 }
+  action_choices:  { on: true,  budget: 500,  trim: 0 }
+  stop_policy:     { on: true,  budget: 300,  trim: 0 }
+  director_outline: { on: true,  budget: 800,  trim: 2 }
+  buffer:          { on: true,  budget: 1400, trim: 0 }
+retrieval: { bm25_topk: 30, vec_topk: 30, fusion: rrf, rrf_k: 60 }
+throttle:  { summary_every_n: 1, state_mode: every_turn }
+templates: { system: templates/system.api.md, system_omniscient: templates/system.omni.api.md }
+output_template: templates/output.api.md

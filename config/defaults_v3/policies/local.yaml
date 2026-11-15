@@ -1,0 +1,28 @@
+# 本地模式 · 检索关闭期（10000 上下文 / 输出预留 1200 => 可用 8800）
+# protagonist 是不可裁剪模块：额度单列，绝不会从头部裁掉主角人设。
+# 900+600+250+650+650+500+0+2800+250+200+2000 = 8800
+mode: local
+estimator:
+  strategy: hybrid
+  zh_ratio: 1.0
+  ascii_ratio: 0.28
+  other_ratio: 0.5
+  safety_margin: 1.15
+context_window: 10000
+max_output_tokens: 1200
+modules:
+  system_contract: { on: true,  budget: 900,  trim: 0 }
+  protagonist:     { on: true,  budget: 600,  trim: 0 }   # 100% 注入，不裁剪
+  opening_scene:   { on: true,  budget: 250,  trim: 1 }
+  state_card:      { on: true,  budget: 650,  trim: 3 }
+  rolling_summary: { on: true,  budget: 650,  trim: 4 }
+  characters:      { on: true,  budget: 500,  trim: 5 }
+  lore_chunks:     { on: false, budget: 0,    top_n: 0, trim: 6 }   # 启用检索后改回 true/2000/4
+  recent_passages: { on: true,  budget: 2800, n: 3,     trim: 7 }
+  action_choices:  { on: true,  budget: 250,  trim: 0 }
+  stop_policy:     { on: true,  budget: 200,  trim: 0 }
+  buffer:          { on: true,  budget: 2000, trim: 0 }
+retrieval: { bm25_topk: 30, vec_topk: 30, fusion: rrf, rrf_k: 60 }  # 关闭期不生效
+throttle:  { summary_every_n: 3, state_mode: every_turn }
+templates: { system: templates/system.local.md, system_omniscient: templates/system.omni.local.md }
+output_template: templates/output.local.md

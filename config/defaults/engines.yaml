@@ -1,0 +1,37 @@
+# 三种调用模式。api 与 local 走同一个 OpenAI-compatible 客户端，只是配置不同。
+# 改完保存即可生效（应用会重新读取）。
+engines:
+  api:
+    base_url: https://api.deepseek.com/v1
+    api_key: ""            # 填入你自己的 key；只存在本机这个文件里
+    model: deepseek-chat
+    params:
+      temperature: 0.8
+      max_tokens: 2000
+      top_p: 0.9
+    timeout_ms: 120000
+    retries: 2
+  local:
+    base_url: http://127.0.0.1:1234/v1   # LM Studio 默认；Ollama 改 :11434/v1
+    model: qwen2.5-9b-instruct-q4_k_m    # 仅示例，可换成任意已加载模型
+    context_window: 10000
+    params:
+      temperature: 0.8
+      max_tokens: 1200
+    timeout_ms: 300000                    # 约 30 tokens/s，超时要给足
+    retries: 1
+  paste:
+    target_hint: ChatGPT 网页版            # 纯提示文案
+
+# 设定检索的向量那一路。model 留空 = 只用 BM25。
+# provider 决定 base_url / api_key 缺省时向谁借：
+#   local  -> engines.local 的地址与 key（LM Studio / Ollama 本地向量模型）
+#   api    -> engines.api 的地址与 key（OpenAI、硅基流动、DashScope 兼容模式等）
+#   custom -> 只用手写在这里的 base_url / api_key（聊天用一个服务商、向量用另一个）
+embedding:
+  provider: local
+  base_url: http://127.0.0.1:1234/v1
+  api_key: ""                              # 在线向量服务填这里；local 一般留空
+  model: nomic-embed-text-v1.5.Q4_K_M      # LM Studio 自带，零额外下载
+  dimensions: 0                            # 仅部分模型支持降维（如 text-embedding-3-*），0 = 默认
+  fallback: bm25_only

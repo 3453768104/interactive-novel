@@ -1,0 +1,32 @@
+[package]
+name = "interactive-novel"
+version = "0.1.0"
+description = "Personal interactive novel desktop app"
+edition = "2021"
+
+[lib]
+name = "interactive_novel_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+rusqlite = { version = "0.32", features = ["bundled", "backup"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+reqwest = { version = "0.12", features = ["json", "stream", "blocking"] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+futures-util = "0.3"
+notify = "6"
+regex = "1"
+arboard = "3"
+rfd = "0.15"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+anyhow = "1"

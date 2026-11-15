@@ -1,0 +1,28 @@
+# 依赖与产物
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/target-check/
+src-tauri/gen/schemas/
+
+# 本地数据（数据库、配置、世界观、日志、备份都在这里）
+src-tauri/target/debug/data/
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# 工具与编辑器
+.workbuddy/
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
+
+# 示例设定集（第三方作品的衍生内容，不入库）
+presets/
+
+# 本地打包产物
+release/
+*.zip

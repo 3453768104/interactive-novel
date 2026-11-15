@@ -1,0 +1,24 @@
+# 本地模式 · 检索关闭期默认策略（10000 上下文 / 输出预留 1200 => 可用 8800）
+# 800+500+700+700+0+3600+300+2200 = 8800
+mode: local
+estimator:
+  strategy: hybrid
+  zh_ratio: 1.0
+  ascii_ratio: 0.28
+  other_ratio: 0.5
+  safety_margin: 1.15
+context_window: 10000
+max_output_tokens: 1200
+modules:
+  system_contract: { on: true,  budget: 800,  trim: 0 }
+  persona_opening: { on: true,  budget: 500,  trim: 0 }
+  state_card:      { on: true,  budget: 700,  trim: 3 }
+  rolling_summary: { on: true,  budget: 700,  trim: 4 }
+  lore_chunks:     { on: false, budget: 0,    top_n: 0, trim: 5 }   # 启用检索后改回 true/2000/4
+  recent_passages: { on: true,  budget: 3600, n: 3,     trim: 6 }
+  action_choices:  { on: true,  budget: 300,  trim: 0 }
+  buffer:          { on: true,  budget: 2200, trim: 0 }
+retrieval: { bm25_topk: 30, vec_topk: 30, fusion: rrf, rrf_k: 60 }  # 关闭期不生效
+throttle:  { summary_every_n: 3, state_mode: every_turn }
+templates: { system: templates/system.local.md }
+output_template: templates/output.local.md

@@ -1,0 +1,26 @@
+# 网页粘贴模式 · 检索关闭期。网页端 AI 没有应用侧记忆，提示词必须自包含、便于人整块复制。
+mode: paste
+estimator:
+  strategy: hybrid
+  zh_ratio: 1.0
+  ascii_ratio: 0.28
+  other_ratio: 0.5
+  safety_margin: 1.15
+context_window: 8000
+max_output_tokens: 1200
+modules:
+  system_contract: { on: true,  budget: 1000, trim: 0 }
+  protagonist:     { on: true,  budget: 700,  trim: 0 }
+  opening_scene:   { on: true,  budget: 250,  trim: 1 }
+  state_card:      { on: true,  budget: 900,  trim: 3 }
+  rolling_summary: { on: true,  budget: 900,  trim: 4 }
+  characters:      { on: true,  budget: 500,  trim: 5 }
+  lore_chunks:     { on: false, budget: 0,    top_n: 0, trim: 6 }
+  recent_passages: { on: true,  budget: 1800, n: 4,    trim: 7 }
+  action_choices:  { on: true,  budget: 250,  trim: 0 }
+  stop_policy:     { on: true,  budget: 200,  trim: 0 }
+  buffer:          { on: true,  budget: 800,  trim: 0 }
+retrieval: { bm25_topk: 30, vec_topk: 30, fusion: rrf, rrf_k: 60 }
+throttle:  { summary_every_n: 1, state_mode: every_turn }
+templates: { system: templates/system.paste.md, system_omniscient: templates/system.omni.paste.md }
+output_template: templates/output.paste.md

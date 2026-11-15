@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    # Windows-only app (WebView2 + Win32 message box), so the runner must match.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Type-check frontend
+        run: npx tsc --noEmit
+
+      - name: Frontend build
+        run: npm run build
+
+      # 暂不强求 -D warnings：存量还有十几个风格类告警，先把"能编译+测试过"当硬门槛。
+      - name: Clippy
+        working-directory: src-tauri
+        run: cargo clippy --no-default-features --all-targets
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test --no-default-features

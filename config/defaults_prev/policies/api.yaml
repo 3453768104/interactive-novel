@@ -1,0 +1,23 @@
+# 联网 API 模式 · 检索关闭期。输入封顶 16000 控成本，剩余额度不强行填满。
+mode: api
+estimator:
+  strategy: hybrid
+  zh_ratio: 1.0
+  ascii_ratio: 0.28
+  other_ratio: 0.5
+  safety_margin: 1.15
+context_window: 64000
+max_output_tokens: 2000
+modules:
+  system_contract: { on: true,  budget: 1200, trim: 0 }
+  persona_opening: { on: true,  budget: 800,  trim: 0 }
+  state_card:      { on: true,  budget: 1500, trim: 3 }
+  rolling_summary: { on: true,  budget: 1500, trim: 4 }
+  lore_chunks:     { on: false, budget: 0,    top_n: 0, trim: 5 }
+  recent_passages: { on: true,  budget: 6000, n: 9,    trim: 6 }
+  action_choices:  { on: true,  budget: 500,  trim: 0 }
+  buffer:          { on: true,  budget: 500,  trim: 0 }
+retrieval: { bm25_topk: 30, vec_topk: 30, fusion: rrf, rrf_k: 60 }
+throttle:  { summary_every_n: 1, state_mode: every_turn }
+templates: { system: templates/system.api.md }
+output_template: templates/output.api.md
