@@ -1,5 +1,9 @@
 # 互动小说 · Interactive Novel
 
+[![release](https://img.shields.io/github/v/release/3453768104/interactive-novel?label=release&color=4f46e5)](https://github.com/3453768104/interactive-novel/releases/latest)
+[![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4)](https://github.com/3453768104/interactive-novel/releases/latest)
+[![license](https://img.shields.io/badge/license-MIT-2f7d4f)](LICENSE)
+
 > 没有大纲、不排剧情：AI 负责叙述，你负责做决定。
 
 一个 Windows 桌面端的**无大纲互动小说**应用。AI 写一段正文 → 停下让你以**主角的身份**行动 → 你选一个选项（或自己写一句）→ 故事接着往下走。你代入主角，代替主角的大脑做决定。
@@ -10,7 +14,14 @@
 
 > 平台：Windows 10/11（依赖系统 WebView2）。技术栈：Tauri 2 + React 18 + TypeScript + Rust + SQLite。
 
-- **便携式**：数据全在 exe 同目录 `data/`，整个文件夹拷到 U 盘就能用，不写注册表、不安装。
+## 下载
+
+到 [Releases](https://github.com/3453768104/interactive-novel/releases/latest) 下载 `interactive-novel-v1.0.0-win-x64.zip`，解压后双击 `interactive-novel.exe` 即可——**免安装**，数据生成在同级 `data/` 目录，整个文件夹拷到 U 盘就能带走。
+
+首次启动若提示"已保护你的电脑"，点「更多信息 → 仍要运行」（个人作品未做代码签名，可以自己从源码编译核对）。
+
+只想试试手感：模式选「网页粘贴」，**不需要装任何模型服务**，提示词会自动进剪贴板，你贴到网页 AI 再把回复复制回来。
+
 - **小说式阅读器**：连续正文流、羊皮纸主题（可切纯白/深色）、字号/行距/页宽/字体/首行缩进/一键沉浸；回合号、模式、重开收进 hover 细标记；选项是无编号短句，正文旁不再有 JSON 编辑框。
 - **四段输出契约**：一次调用返回 `NARRATION`（正文）/ `ANALYSIS`（分析）/ `STOP`（要不要停）/ `CHOICES`（选项）。分析段结构化写入**世界状态 / 玩家状态 / 角色状态**，不再往日志里堆文本。
 - **分析阶段**：默认随正文一次返回、零额外往返；`api`/`local` 可选再跑一次便宜小模型做独立分析（默认关）。
