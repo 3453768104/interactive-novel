@@ -1,4 +1,5 @@
 严格按四段格式回复。不要额外说明、不要代码块围栏、不要复述本指令。
+- 正文段落里绝对不能出现 JSON 或字段名（world / player / characters / choices）；分析内容只写在 ANALYSIS 块内，正文写到 END_NARRATION 就停。
 选项必须是主角此刻能做的行动／念头／对话，不替主角决定结果。
 【每个选项独占一行】写成 A. … / B. … / C. …，禁止把多个选项连写在同一行。
 STOP 的 stop=false 表示继续写、不必给选项；stop=true 时必须给 3 个选项。

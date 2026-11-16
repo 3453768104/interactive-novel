@@ -13,6 +13,13 @@ const OPEN_ALIAS = /【正文】/;
 /** Anything that means "narration is over": a marker, a stray `<`, or an alias. */
 const CLOSE_HINT = /<<<|【\/?(?:分析|选项|状态|摘要|停顿|正文)】/;
 
+/**
+ * 小模型有时候一个标记都不写，直接把分析对象接在正文后面。
+ * 先按"已知字段名"定位（流式时字段名可能只收到一半），兜底再按 `{"` 定位。
+ */
+const JSON_TAIL_KEYED = /\{\s*"(?:world|player|charac|summary|narrat|analys|stop|choic|prompt)/i;
+const JSON_TAIL_ANY = /\n?\s*\{\s*"/;
+
 const COURTESY =
   /^(?:好的[，,。！!]?|以下是.*[:：]?|Sure[!,.]?|Here'?s .*[:：]?|Here is .*[:：]?)$/i;
 
@@ -39,6 +46,15 @@ export function streamingNarration(raw: string): string {
 
   const end = text.search(CLOSE_HINT);
   if (end >= 0) text = text.slice(0, end);
+
+  const keyed = text.search(JSON_TAIL_KEYED);
+  if (keyed > 0) {
+    text = text.slice(0, keyed);
+  } else {
+    const any = text.search(JSON_TAIL_ANY);
+    // 40 字以上的正文后面才可能出现对象；太短的先不动，避免误伤引用里的花括号。
+    if (any > 40) text = text.slice(0, any);
+  }
   return tidy(text);
 }
 

@@ -298,7 +298,7 @@ pub fn analysis_for(p: &ParsedOutput) -> Option<crate::domain::Analysis> {
 }
 
 fn try_markers(raw: &str) -> Option<ParsedOutput> {
-    let narration = extract_marker(raw, "NARRATION")?;
+    let mut narration = extract_marker(raw, "NARRATION")?;
     if narration.is_empty() {
         return None;
     }
@@ -308,7 +308,17 @@ fn try_markers(raw: &str) -> Option<ParsedOutput> {
     if glued {
         warnings.push(suspect_warning());
     }
-    let analysis_json = extract_marker(raw, "ANALYSIS").unwrap_or_default();
+    let mut analysis_json = extract_marker(raw, "ANALYSIS").unwrap_or_default();
+    // 标记写对了，但分析 JSON 被写进了正文段（小模型常犯）：一起拆出来。
+    if let Some((prose, v)) = split_trailing_json(&narration) {
+        if !prose.trim().is_empty() {
+            narration = prose.trim().to_string();
+            if analysis_json.trim().is_empty() {
+                analysis_json = analysis_subset(&v);
+                warnings.push("分析 JSON 被写进了正文段，已自动拆出".into());
+            }
+        }
+    }
     let (stop, stop_reason, stop_trigger) =
         parse_stop(&extract_marker(raw, "STOP").unwrap_or_default());
     Some(ParsedOutput {
@@ -325,18 +335,96 @@ fn try_markers(raw: &str) -> Option<ParsedOutput> {
     })
 }
 
-fn try_json(raw: &str) -> Option<ParsedOutput> {
-    // Find the first balanced-looking JSON object.
-    let start = raw.find('{')?;
-    let end = raw.rfind('}')?;
-    if end <= start {
-        return None;
+/// 去掉残留的块标记（模型只写了开标记、没写 `<<<END_X>>>` 时会漏进来）。
+fn strip_block_markers(s: &str) -> String {
+    let re = Regex::new(
+        r"(?i)<<<\s*/?\s*(?:END_)?(?:NARRATION|ANALYSIS|STOP|CHOICES|STATE_DELTA|SUMMARY_DELTA)\s*>>>",
+    )
+    .unwrap();
+    re.replace_all(s, "").trim().to_string()
+}
+
+/// 从 `start`（必须指向 `{`）开始找配平的大括号，跳过字符串里的花括号与转义。
+fn balanced_end(s: &str, start: usize) -> Option<usize> {
+    let mut depth = 0i32;
+    let mut in_str = false;
+    let mut esc = false;
+    for (off, ch) in s[start..].char_indices() {
+        if in_str {
+            if esc {
+                esc = false;
+            } else if ch == '\\' {
+                esc = true;
+            } else if ch == '"' {
+                in_str = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_str = true,
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(start + off + ch.len_utf8());
+                }
+            }
+            _ => {}
+        }
     }
-    let v: Value = serde_json::from_str(&raw[start..=end]).ok()?;
-    let narration = v["narration"].as_str()?.trim().to_string();
-    if narration.is_empty() {
-        return None;
+    None
+}
+
+/// 分析段认识的字段。只把这些挑出来喂给状态卡，避免 narration / choices 一起进去。
+const ANALYSIS_KEYS: [&str; 5] = [
+    "world",
+    "player",
+    "characters",
+    "summary",
+    "new_character_candidates",
+];
+
+fn analysis_subset(v: &Value) -> String {
+    let mut out = serde_json::Map::new();
+    for k in ANALYSIS_KEYS {
+        if let Some(x) = v.get(k) {
+            if !x.is_null() {
+                out.insert(k.to_string(), x.clone());
+            }
+        }
     }
+    if out.is_empty() {
+        String::new()
+    } else {
+        Value::Object(out).to_string()
+    }
+}
+
+/// 模型偶尔不写任何标记，直接「正文 + 一个 JSON」吐出来（分析块没加 `<<<ANALYSIS>>>`）。
+/// 这时整段 JSON 会被当成正文贴进阅读器——就是"正文里冒出 goal / characters"那个 bug。
+/// 这里在正文后面找出那个对象并拆开。
+fn split_trailing_json(raw: &str) -> Option<(&str, Value)> {
+    let bytes = raw.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if bytes[i] != b'{' {
+            i += 1;
+            continue;
+        }
+        if let Some(end) = balanced_end(raw, i) {
+            if let Ok(v) = serde_json::from_str::<Value>(&raw[i..end]) {
+                if v.is_object() && ANALYSIS_KEYS.iter().any(|k| v.get(*k).is_some()) {
+                    return Some((&raw[..i], v));
+                }
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+/// 由一个 JSON 对象组装解析结果。纯 JSON 模式与「正文+JSON」两条路共用。
+fn from_object(v: &Value, narration: String) -> ParsedOutput {
     let raw_choices: Vec<String> = v["choices"]
         .as_array()
         .map(|a| {
@@ -351,22 +439,25 @@ fn try_json(raw: &str) -> Option<ParsedOutput> {
     if glued {
         warnings.push(suspect_warning());
     }
-    let analysis_json = v
-        .get("analysis")
-        .filter(|a| !a.is_null())
-        .map(|a| a.to_string())
-        .unwrap_or_default();
     let (stop, stop_reason, stop_trigger) = match v.get("stop") {
         Some(Value::Object(_)) => parse_stop(&v["stop"].to_string()),
         Some(Value::Bool(b)) => (*b, String::new(), String::new()),
         Some(Value::String(s)) => (
-            !matches!(s.to_ascii_lowercase().as_str(), "no" | "false" | "continue" | "继续"),
+            !matches!(
+                s.to_ascii_lowercase().as_str(),
+                "no" | "false" | "continue" | "继续"
+            ),
             String::new(),
             String::new(),
         ),
         _ => (true, String::new(), String::new()),
     };
-    Some(ParsedOutput {
+    // 两种写法都见过：整块塞在 `analysis` 里，或者把字段直接摆在顶层。
+    let analysis_json = match v.get("analysis").filter(|a| a.is_object()) {
+        Some(_) => v["analysis"].to_string(),
+        None => analysis_subset(v),
+    };
+    ParsedOutput {
         narration,
         choices,
         state_delta: v["state_delta"].as_str().unwrap_or("").to_string(),
@@ -377,7 +468,27 @@ fn try_json(raw: &str) -> Option<ParsedOutput> {
         stop_trigger,
         warnings,
         raw_output: String::new(),
-    })
+    }
+}
+
+fn try_json(raw: &str) -> Option<ParsedOutput> {
+    let start = raw.find('{')?;
+    let v: Value = serde_json::from_str(&raw[start..]).ok().or_else(|| {
+        let end = raw.rfind('}')?;
+        if end > start {
+            serde_json::from_str(&raw[start..=end]).ok()
+        } else {
+            None
+        }
+    })?;
+    if !v.is_object() {
+        return None;
+    }
+    let narration = v["narration"].as_str()?.trim().to_string();
+    if narration.is_empty() {
+        return None;
+    }
+    Some(from_object(&v, narration))
 }
 
 fn heuristic(raw: &str) -> ParsedOutput {
@@ -466,6 +577,25 @@ pub fn parse_output(raw: &str, mode: &str) -> ParsedOutput {
     }
     if let Some(p) = try_markers(&cleaned) {
         return finalize(p, raw);
+    }
+    // 一个标记都没有，但正文后面挂着一个完整对象：拆开当正文 + 分析段。
+    if let Some((prose, v)) = split_trailing_json(&cleaned) {
+        let prose = strip_block_markers(prose);
+        let had_prose = !prose.is_empty();
+        let narration = if had_prose {
+            prose
+        } else {
+            v["narration"].as_str().unwrap_or("").trim().to_string()
+        };
+        if !narration.is_empty() {
+            let mut p = from_object(&v, narration);
+            if had_prose {
+                p.warnings.push(
+                    "模型把结构化 JSON 混在正文里，已自动拆开；若反复出现，可在输出契约里强调只用标记分段".into(),
+                );
+            }
+            return finalize(p, raw);
+        }
     }
     finalize(heuristic(&cleaned), raw)
 }
@@ -805,6 +935,40 @@ mod tests {
     }
 
     #[test]
+    /// 真实踩到的情况：模型没写任何标记，正文后面直接跟一整块分析 JSON。
+    /// 修之前这段 JSON 会被当成正文贴进阅读器（截图里那一大串 goal/characters）。
+    #[test]
+    fn prose_followed_by_bare_analysis_json_is_split() {
+        let raw = "他合上门，心底记着亥时的约定。\n\
+                   {\"world\":{\"time\":\"亥时前\"},\
+                   \"player\":{\"mood\":\"松一口气\",\"goal\":\"等到亥时去老地方见千仞雪\"},\
+                   \"characters\":[{\"name\":\"千仞雪\",\"current_state\":\"约好亥时见\",\"importance\":\"favorite\",\"is_new\":false}],\
+                   \"summary\":\"明色与千仞雪约好亥时见。\",\
+                   \"new_character_candidates\":[],\
+                   \"stop\":{\"stop\":true,\"reason\":\"需要主角拿主意\",\"trigger\":\"major_decision\"},\
+                   \"choices\":[\"A. 回自己房里待到亥时\",\"B. 先去偏厅转转\",\"C. 去找那个执事\"]}";
+        let p = parse_output(raw, "local");
+
+        assert_eq!(p.narration, "他合上门，心底记着亥时的约定。");
+        assert!(!p.narration.contains("goal"), "JSON 不能留在正文里");
+        assert_eq!(p.choices.len(), 3);
+        assert!(p.choices[0].contains("回自己房里待到亥时"));
+        assert!(p.stop, "stop 段应从同一个对象里读出来");
+        assert!(p.analysis_json.contains("\"summary\""));
+        assert!(!p.analysis_json.contains("choices"), "分析段只保留状态字段");
+        assert!(p.warnings.iter().any(|w| w.contains("自动拆开")));
+    }
+
+    /// 标记写对了但分析块漏了 `<<<ANALYSIS>>>`，JSON 落在正文段末尾。
+    #[test]
+    fn markers_present_but_json_inside_narration() {
+        let raw = "<<<NARRATION>>>\n雨停了。\n{\"summary\":\"雨停了\",\"player\":{\"mood\":\"静\"}}\n\
+                   <<<STOP>>>\n{\"stop\":true}";
+        let p = parse_output(raw, "local");
+        assert_eq!(p.narration, "雨停了。");
+        assert!(p.analysis_json.contains("summary"));
+    }
+
     fn heuristic_fallback_when_no_markers() {        let raw = "他走进院子，四下无人。\nA. 喊一声\nB. 躲起来";
         let p = parse_output(raw, "local");
         assert_eq!(p.narration, "他走进院子，四下无人。");
